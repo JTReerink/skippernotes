@@ -54,7 +54,10 @@ const ViewPin = () => {
         address: pin.address || '',
         lat: pin.lat,
         lng: pin.lng,
+        authorName: currentUser.displayName || currentUser.email.split('@')[0],
         originalAuthor: pin.authorEmail,
+        originalAuthorId: pin.authorId,
+        originalAuthorName: pin.authorName || pin.authorEmail.split('@')[0],
         originalPinId: pin.id
       });
       // update local list so the UI reacts immediately
@@ -120,8 +123,13 @@ const ViewPin = () => {
           <p style={{ margin: '10px 0 0 0', fontSize: '0.85rem' }}>
             Added by:{' '}
             <Link to={`/user/${pin.authorId}`} style={{ color: 'var(--color-primary)', fontWeight: 'bold', textDecoration: 'none' }}>
-               {pin.authorEmail.split('@')[0]}
+               {pin.authorName || pin.authorEmail.split('@')[0]}
             </Link>
+          </p>
+        )}
+        {pin.originalAuthorId && (
+          <p style={{ margin: '5px 0 0 0', fontSize: '0.8rem', color: 'gray' }}>
+            Originally by: {pin.originalAuthorName || pin.originalAuthor || 'Unknown'}
           </p>
         )}
       </div>

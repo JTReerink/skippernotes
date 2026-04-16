@@ -13,6 +13,7 @@ export async function addLocation(authorId, authorEmail, locationData) {
       ...locationData, // title, description, lat, lng, address (optional)
       authorId,
       authorEmail,
+      authorName: locationData.authorName || authorEmail.split('@')[0],
       createdAt: serverTimestamp(),
       isPublic: locationData.originalAuthor ? false : true // copies are private by default
     });
@@ -185,6 +186,26 @@ export async function updateUserProfile(uid, dataToUpdate) {
   try {
     const docRef = doc(db, "users", uid);
     await updateDoc(docRef, dataToUpdate);
+    
+    // If name changed, propagate to their locations and routes
+    if (dataToUpdate.displayName) {
+      // Update owned locations
+      const locQ = query(locationsRef, where("authorId", "==", uid));
+      const locSnap = await getDocs(locQ);
+      const locPromises = locSnap.docs.map(d => updateDoc(d.ref, { authorName: dataToUpdate.displayName }));
+      
+      // Update owned routes
+      const routeQ = query(routesRef, where("authorId", "==", uid));
+      const routeSnap = await getDocs(routeQ);
+      const routePromises = routeSnap.docs.map(d => updateDoc(d.ref, { authorName: dataToUpdate.displayName }));
+      
+      // Update instances where they are the 'originalAuthor' (on others' copied pins)
+      const originalQ = query(locationsRef, where("originalAuthorId", "==", uid));
+      const originalSnap = await getDocs(originalQ);
+      const originalPromises = originalSnap.docs.map(d => updateDoc(d.ref, { originalAuthorName: dataToUpdate.displayName }));
+
+      await Promise.all([...locPromises, ...routePromises, ...originalPromises]);
+    }
   } catch (error) {
     console.error("Error updating user profile: ", error);
     throw error;

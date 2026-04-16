@@ -94,7 +94,7 @@ const MapViewer = ({ locations = [], routes = [] }) => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const mapRef = useRef();
-  const defaultPosition = [52.3676, 4.9041]; // Amsterdam
+  const defaultPosition = [52.3727, 4.8936]; // Dam Square, Amsterdam City Center
 
   useEffect(() => {
     if (!navigator.geolocation) return;
@@ -258,7 +258,7 @@ const MapViewer = ({ locations = [], routes = [] }) => {
                 <strong>{loc.title}</strong>
                 <p>{loc.description}</p>
                 {loc.address && <p style={{ fontSize: '0.85rem' }}>📍 {loc.address}</p>}
-                <i style={{ fontSize: '0.8rem', color: 'gray' }}>By: {loc.authorEmail?.split('@')[0]}</i>
+                <i style={{ fontSize: '0.8rem', color: 'gray' }}>By: {loc.authorName || loc.authorEmail?.split('@')[0]}</i>
                 {loc.authorId === currentUser?.uid && (
                   <button
                     onClick={() => navigate(`/edit-pin/${loc.id}`)}
@@ -285,9 +285,9 @@ const MapViewer = ({ locations = [], routes = [] }) => {
         {!isAddMode && !newPin && (
           <div style={{ position: 'relative' }}>
             {showTooltip && (
-              <div className="onboarding-tooltip" onClick={() => setShowTooltip(false)}>
-                Add your own location!
-              </div>
+               <div className="onboarding-tooltip" onClick={() => setShowTooltip(false)}>
+                  Remember a spot!
+               </div>
             )}
             <button
               className="btn btn-primary gps-button"

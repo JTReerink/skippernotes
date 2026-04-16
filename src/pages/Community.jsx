@@ -113,7 +113,7 @@ const Community = () => {
                         <p style={{ fontSize: '0.85rem', marginTop: '10px', display: 'flex', alignItems: 'center' }}>
                            👤 By:{' '}
                            <Link to={`/user/${pin.authorId}`} style={{ color: isFriend ? 'var(--color-primary)' : 'gray', fontWeight: isFriend ? 'bold' : 'normal', marginLeft: '5px', textDecoration: 'none' }}>
-                             {pin.authorEmail?.split('@')[0]} {isFriend && '⭐'}
+                             {pin.authorName || pin.authorEmail?.split('@')[0]} {isFriend && '⭐'}
                            </Link>
                         </p>
                      </div>
@@ -141,7 +141,7 @@ const Community = () => {
                      <p style={{ fontSize: '0.85rem', marginTop: '10px' }}>
                         👤 Friend:{' '}
                         <Link to={`/user/${pin.authorId}`} style={{ color: 'var(--color-primary)', fontWeight: 'bold', textDecoration: 'none' }}>
-                          {pin.authorEmail?.split('@')[0]}
+                          {pin.authorName || pin.authorEmail?.split('@')[0]}
                         </Link>
                      </p>
                   </div>
