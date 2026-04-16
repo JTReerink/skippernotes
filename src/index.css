@@ -39,6 +39,7 @@ body {
   color: var(--color-text);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 /* Base interactive elements */
@@ -141,6 +142,7 @@ a:hover {
 .content-container {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   position: relative;
 }
 
@@ -245,6 +247,62 @@ h1, h2, h3 {
   width: 100%;
   position: relative;
   z-index: 1;
+  overflow: hidden;
+}
+
+.gps-button {
+  width: 3.5rem;
+  height: 3.5rem;
+  font-size: 1.5rem;
+}
+
+.onboarding-tooltip {
+  position: absolute;
+  right: calc(100% + 15px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: white;
+  color: var(--color-primary);
+  padding: 10px 15px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  font-weight: bold;
+  white-space: nowrap;
+  font-size: 0.9rem;
+  border: 2px solid var(--color-primary);
+  animation: slide-bounce 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  cursor: pointer;
+}
+
+.onboarding-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -8px;
+  transform: translateY(-50%);
+  border-width: 8px 0 8px 8px;
+  border-style: solid;
+  border-color: transparent transparent transparent var(--color-primary);
+}
+
+@keyframes slide-bounce {
+  0% { opacity: 0; transform: translate(-30px, -50%); }
+  100% { opacity: 1; transform: translate(0, -50%); }
+}
+
+@keyframes pulse-glow {
+  0% { box-shadow: 0 0 0 0 rgba(10, 36, 99, 0.5); }
+  70% { box-shadow: 0 0 0 15px rgba(10, 36, 99, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(10, 36, 99, 0); }
+}
+
+@media (min-width: 769px) {
+  .gps-button {
+    width: 4.5rem;
+    height: 4.5rem;
+    font-size: 2rem;
+    animation: pulse-glow 2s infinite;
+  }
 }
 
 /* Mobile-first bottom sheet for adding pins */

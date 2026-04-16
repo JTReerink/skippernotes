@@ -44,10 +44,20 @@ const createNumberedIcon = (number, color) => {
   });
 };
 
+const getCommunityColor = (str) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  // Generate HSL colors to ensure they are visually pleasing & vibrant
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue}, 70%, 45%)`;
+};
+
 const MapClickHandler = ({ onAddPin, isAddMode }) => {
   useMapEvents({
     click(e) {
-      if(isAddMode) onAddPin(e.latlng);
+      if (isAddMode) onAddPin(e.latlng);
     },
   });
   return null;
@@ -58,7 +68,14 @@ const MapViewer = ({ locations = [], routes = [] }) => {
   const [error, setError] = useState(null);
   const [newPin, setNewPin] = useState(null); // {lat, lng}
   const [isAddMode, setIsAddMode] = useState(false);
-  
+  const [showTooltip, setShowTooltip] = useState(true);
+
+  // Auto-hide onboarding tooltip after 12 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => setShowTooltip(false), 12000);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Form States
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -70,7 +87,7 @@ const MapViewer = ({ locations = [], routes = [] }) => {
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  
+
   // Route Filtering
   const [activeRouteId, setActiveRouteId] = useState('all');
 
@@ -124,29 +141,29 @@ const MapViewer = ({ locations = [], routes = [] }) => {
     // Determine the name
     const placeName = place.name || place.display_name.split(',')[0];
     setTitle(placeName);
-    
+
     // Determine clean address
     const addr = place.address || {};
     const roadInfo = addr.road ? `${addr.road} ${addr.house_number || ''}`.trim() : '';
     const cityInfo = addr.city || addr.town || addr.village || '';
     const fullAddress = [roadInfo, cityInfo].filter(Boolean).join(', ');
     setAddress(fullAddress);
-    
+
     // Move the pin exactly to the building
     const lat = parseFloat(place.lat);
     const lng = parseFloat(place.lon);
     setNewPin({ lat, lng });
-    
+
     // Center map
     if (mapRef.current) {
-        mapRef.current.setView([lat, lng], 17);
+      mapRef.current.setView([lat, lng], 17);
     }
-    
+
     setShowSuggestions(false);
   };
 
   const handleMapClick = (latlng) => {
-    if(isSaving) return;
+    if (isSaving) return;
     setNewPin(latlng);
   };
 
@@ -168,7 +185,7 @@ const MapViewer = ({ locations = [], routes = [] }) => {
       setAddress('');
       setSearchTerm('');
       setIsAddMode(false);
-      window.location.reload(); 
+      window.location.reload();
     } catch (err) {
       console.error(err);
       alert("Failed to save location.");
@@ -179,18 +196,18 @@ const MapViewer = ({ locations = [], routes = [] }) => {
   // Determine which pins to show based on Route filter
   const activeRoute = routes.find(r => r.id === activeRouteId);
   let displayedLocations = locations;
-  
+
   if (activeRoute) {
-     // Ensure we order them as they appear in the route array
-     displayedLocations = (activeRoute.pinIds || []).map(id => locations.find(l => l.id === id)).filter(Boolean);
+    // Ensure we order them as they appear in the route array
+    displayedLocations = (activeRoute.pinIds || []).map(id => locations.find(l => l.id === id)).filter(Boolean);
   }
 
   return (
     <div className="map-container">
       {/* Route Filter Dropdown Top-Left */}
       <div style={{ position: 'absolute', top: '1rem', left: '1rem', zIndex: 1000 }}>
-        <select 
-          value={activeRouteId} 
+        <select
+          value={activeRouteId}
           onChange={(e) => setActiveRouteId(e.target.value)}
           style={{ padding: '0.5rem', borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-md)', fontWeight: 'bold', background: 'white' }}
         >
@@ -209,26 +226,32 @@ const MapViewer = ({ locations = [], routes = [] }) => {
         </div>
       )}
 
-      <MapContainer 
-        center={defaultPosition} 
-        zoom={14} 
+      <MapContainer
+        center={defaultPosition}
+        zoom={14}
         style={{ height: '100%', width: '100%' }}
         ref={mapRef}
         zoomControl={false}
       >
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         <MapClickHandler onAddPin={handleMapClick} isAddMode={isAddMode} />
-        
+
         {position && (
           <Marker position={[position.lat, position.lng]} icon={userIcon}>
-             <Popup>Your Location</Popup>
+            <Popup>Your Location</Popup>
           </Marker>
         )}
 
         {/* Existing Locations */}
         {displayedLocations.map((loc, index) => {
-          // If a route is active, create a dynamic icon. Else use default.
-          const icon = activeRoute ? createNumberedIcon(index + 1, activeRoute.color || '#000000') : defaultIcon;
+          // If a route is active, create a dynamic icon based on route. Else use default.
+          let icon = defaultIcon;
+          if (activeRoute) {
+            icon = createNumberedIcon(index + 1, activeRoute.color || '#000000');
+          } else if (!currentUser) {
+            // We are visitors looking at the global community pool.
+            icon = createNumberedIcon('📍', getCommunityColor(loc.authorId || loc.authorEmail || 'unknown'));
+          }
           return (
             <Marker key={loc.id} position={[loc.lat, loc.lng]} icon={icon}>
               <Popup>
@@ -237,9 +260,9 @@ const MapViewer = ({ locations = [], routes = [] }) => {
                 {loc.address && <p style={{ fontSize: '0.85rem' }}>📍 {loc.address}</p>}
                 <i style={{ fontSize: '0.8rem', color: 'gray' }}>By: {loc.authorEmail?.split('@')[0]}</i>
                 {loc.authorId === currentUser?.uid && (
-                  <button 
+                  <button
                     onClick={() => navigate(`/edit-pin/${loc.id}`)}
-                    className="btn btn-primary" 
+                    className="btn btn-primary"
                     style={{ marginTop: '10px', width: '100%', padding: '5px' }}>
                     Edit Pin
                   </button>
@@ -256,18 +279,34 @@ const MapViewer = ({ locations = [], routes = [] }) => {
       </MapContainer>
 
       {/* Primary Action Button Container */}
-      <div style={{ position: 'absolute', bottom: 'calc(var(--bottom-nav-height, 0px) + 1rem)', right: '1.5rem', zIndex: 1000, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        
+      <div style={{ position: 'absolute', bottom: 'calc(var(--bottom-nav-height, 0px) + 1.5rem)', right: '1.5rem', zIndex: 1000, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
         {/* Toggle Add Pin Mode Button (using the requested blue icon) */}
         {!isAddMode && !newPin && (
-          <button 
-            className="btn btn-primary gps-button"
-            style={{ width: '3.5rem', height: '3.5rem', padding: 0, borderRadius: '50%', fontSize: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-lg)' }}
-            onClick={() => setIsAddMode(true)}
-            title="Add a new pin"
-          >
-            📍
-          </button>
+          <div style={{ position: 'relative' }}>
+            {showTooltip && (
+              <div className="onboarding-tooltip" onClick={() => setShowTooltip(false)}>
+                Add your own location!
+              </div>
+            )}
+            <button
+              className="btn btn-primary gps-button"
+              style={{ padding: 0, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-lg)' }}
+              onClick={() => {
+                setShowTooltip(false);
+                if (!currentUser) {
+                  if (window.confirm("Please log in or create an account to save custom pins and routes. Go to Login?")) {
+                    navigate('/login');
+                  }
+                } else {
+                  setIsAddMode(true);
+                }
+              }}
+              title="Add a new pin"
+            >
+              📍
+            </button>
+          </div>
         )}
       </div>
 
@@ -277,48 +316,48 @@ const MapViewer = ({ locations = [], routes = [] }) => {
           <form onSubmit={handleSavePin} className="flex flex-col gap-2 relative">
             <h3 style={{ margin: '0 0 5px 0', fontSize: '1.2rem' }}>New Location</h3>
             <p className="text-muted" style={{ fontSize: '0.8rem', marginBottom: '10px' }}>Enter details or search a known spot.</p>
-            
+
             <div style={{ position: 'relative' }}>
-               <input 
-                 type="text" 
-                 placeholder="Name (e.g. Magere Brug)" 
-                 value={title}
-                 onChange={handleTitleChange}
-                 onFocus={() => setShowSuggestions(true)}
-                 required
-               />
-               
-               {/* Suggestions Dropdown */}
-               {showSuggestions && (searchTerm.length >= 3) && (
-                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'white', borderRadius: '8px', boxShadow: 'var(--shadow-lg)', zIndex: 1001, maxHeight: '200px', overflowY: 'auto', border: '1px solid #eee' }}>
-                    {isSearching ? (
-                        <div style={{ padding: '0.8rem', fontSize: '0.85rem', color: 'gray' }}>Searching...</div>
-                    ) : suggestions.length === 0 ? (
-                        <div style={{ padding: '0.8rem', fontSize: '0.85rem', color: 'gray' }}>No known places found.</div>
-                    ) : (
-                        suggestions.map((place, idx) => (
-                           <div 
-                              key={idx} 
-                              onClick={() => handleSelectSuggestion(place)}
-                              style={{ padding: '0.8rem', borderBottom: '1px solid #f1f1f1', cursor: 'pointer', display:'flex', flexDirection:'column', gap:'0.2rem' }}
-                           >
-                              <strong style={{ fontSize: '0.9rem' }}>{place.name || place.display_name.split(',')[0]}</strong>
-                              <span style={{ fontSize: '0.75rem', color: 'gray' }}>{place.display_name}</span>
-                           </div>
-                        ))
-                    )}
-                 </div>
-               )}
+              <input
+                type="text"
+                placeholder="Name (e.g. Magere Brug)"
+                value={title}
+                onChange={handleTitleChange}
+                onFocus={() => setShowSuggestions(true)}
+                required
+              />
+
+              {/* Suggestions Dropdown */}
+              {showSuggestions && (searchTerm.length >= 3) && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'white', borderRadius: '8px', boxShadow: 'var(--shadow-lg)', zIndex: 1001, maxHeight: '200px', overflowY: 'auto', border: '1px solid #eee' }}>
+                  {isSearching ? (
+                    <div style={{ padding: '0.8rem', fontSize: '0.85rem', color: 'gray' }}>Searching...</div>
+                  ) : suggestions.length === 0 ? (
+                    <div style={{ padding: '0.8rem', fontSize: '0.85rem', color: 'gray' }}>No known places found.</div>
+                  ) : (
+                    suggestions.map((place, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => handleSelectSuggestion(place)}
+                        style={{ padding: '0.8rem', borderBottom: '1px solid #f1f1f1', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}
+                      >
+                        <strong style={{ fontSize: '0.9rem' }}>{place.name || place.display_name.split(',')[0]}</strong>
+                        <span style={{ fontSize: '0.75rem', color: 'gray' }}>{place.display_name}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
 
-            <input 
-              type="text" 
-              placeholder="Address (optional)" 
+            <input
+              type="text"
+              placeholder="Address (optional)"
               value={address}
               onChange={e => setAddress(e.target.value)}
             />
-            <textarea 
-              placeholder="Facts or Story (optional)" 
+            <textarea
+              placeholder="Facts or Story (optional)"
               value={description}
               onChange={e => setDescription(e.target.value)}
               style={{ minHeight: '80px', marginTop: '5px' }}

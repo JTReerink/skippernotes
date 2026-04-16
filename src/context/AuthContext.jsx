@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { auth } from '../services/firebase';
+import { checkAndCreateUserProfile } from '../services/firestore';
 
 const AuthContext = createContext();
 
@@ -21,8 +22,15 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, user => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
+      if (user) {
+        try {
+          await checkAndCreateUserProfile(user);
+        } catch (e) {
+          console.error("Failed to create profile: ", e);
+        }
+      }
       setLoading(false);
     });
 
